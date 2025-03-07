@@ -9,6 +9,11 @@ on:
       types: [ submitted ]
     workflow_dispatch: ~
 
+
+concurrency:
+    group: ${{ github.event_name == 'issue_comment' && ('pull-request-' + github.event.issue.number) || github.sha }}
+    cancel-in-progress: true
+
 jobs:
     build:
         if: |
@@ -46,7 +51,7 @@ jobs:
 
             -   name: Job
                 run: |
-                  sleep 5
+                  sleep 60
                   echo "$GITHUB_DATA"
 
             -   name: Set latest commit status
