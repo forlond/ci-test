@@ -9,27 +9,26 @@ on:
 
 jobs:
     build:
-        if: ${{ ! github.event.issue || (github.event.issue.pull_request && github.event.comment.body == 'run-ci') }}
+        if: github.event_name != 'issue_comment' || (github.event.issue.pull_request && github.event.comment.body == 'run-ci')
 
 
         env:
             GITHUB_DATA: ${{ toJSON(github) }}
-            IS_PULL_REQUEST: ${{ github.event.issue.pull_request && github.event.comment.body == 'run-ci' }}
 
         runs-on: ubuntu-latest
 
         steps:
 
             -   name: Get PR branch
-                if: env.IS_PULL_REQUEST
+                if: github.event_name == 'issue_comment'
                 uses: xt0rted/pull-request-comment-branch@v3
                 id: comment-branch
 
-            -   name: Set PR latest commit status as pending
-                if: env.IS_PULL_REQUEST
+            -   name: Set latest commit status as pending
+                if: github.event_name != 'push'
                 uses: myrotvorets/set-commit-status-action@master
                 with:
-                    sha: ${{ steps.comment-branch.outputs.head_sha }}
+                    sha: ${{ steps.comment-branch.outputs.head_sha || github.sha }}
                     token: ${{ secrets.GITHUB_TOKEN }}
                     status: pending
 
@@ -37,16 +36,16 @@ jobs:
             -   name: Checkout Code
                 uses: actions/checkout@v4
                 with:
-                    ref: ${{ steps.comment-branch.outputs.head_ref }}
+                    ref: ${{ steps.comment-branch.outputs.head_ref || github.ref }}
 
 
             -   name: Job
                 run: echo "$GITHUB_DATA"
 
-            -   name: Set PR latest commit status
+            -   name: Set latest commit status
                 uses: myrotvorets/set-commit-status-action@master
-                if: env.IS_PULL_REQUEST && always()
+                if: github.event_name != 'push' && always()
                 with:
-                    sha: ${{ steps.comment-branch.outputs.head_sha }}
+                    sha: ${{ steps.comment-branch.outputs.head_sha || github.sha }}
                     token: ${{ secrets.GITHUB_TOKEN }}
                     status: ${{ job.status }}
